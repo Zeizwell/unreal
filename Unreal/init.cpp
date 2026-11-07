@@ -20,6 +20,7 @@
 #include "debugger/debug.h"
 #include "visuals.h"
 #include "ft812.h"
+#include "trincard.h"
 
 void cpu_info()
 {
@@ -102,6 +103,7 @@ void init_all(int argc, char **argv)
    init_debug();
    init_visuals();
    applyconfig();
+   tc_init();   // ZX Trinity card from trinity_card.dll (trincard.h)
    main_reset();
    autoload();
    init_bpx(bpx);

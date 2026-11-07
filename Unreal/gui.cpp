@@ -778,6 +778,7 @@ INT_PTR CALLBACK ChipDlg(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
       c1.sound.ay_vols = (u8)SendDlgItemMessage(dlg, IDC_CHIP_VOL, CB_GETCURSEL, 0, 0);
       c1.sound.ay_stereo = (u8)SendDlgItemMessage(dlg, IDC_CHIP_STEREO, CB_GETCURSEL, 0, 0);
       c1.sound.ay_samples = getcheck(IDC_CHIP_DIGITAL);
+      c1.sound.trinity = getcheck(IDC_CHIP_TRINITY);
    }
    if (nm->code == PSN_SETACTIVE) {
       setint(IDC_CHIP_CLK, c1.sound.ayfq);
@@ -786,6 +787,7 @@ INT_PTR CALLBACK ChipDlg(HWND dlg, UINT msg, WPARAM wp, LPARAM lp)
       SendDlgItemMessage(dlg, IDC_CHIP_VOL, CB_SETCURSEL, c1.sound.ay_vols, 0);
       SendDlgItemMessage(dlg, IDC_CHIP_STEREO, CB_SETCURSEL, c1.sound.ay_stereo, 0);
       setcheck(IDC_CHIP_DIGITAL, c1.sound.ay_samples);
+      setcheck(IDC_CHIP_TRINITY, c1.sound.trinity);
       lastpage = "AY";
    }
    if (nm->code == PSN_APPLY) dlgok = 1;

@@ -15,6 +15,7 @@
 #include "sound/ayx32.h"
 #include "util.h"
 #include "sound/dev_moonsound.h"
+#include "trincard.h"
 
 #ifdef LOG_FE_OUT
   extern FILE *f_log_FE_in;
@@ -817,6 +818,7 @@ set1FFD:
          }
 
          ay_last_reg = val;
+         if (tc_on) tc_write(0, val);   // ZX Trinity card: sees every #FFFD write, tracks the chip itself
          if ((conf.sound.ay_scheme == AY_SCHEME_AYX32) && (val >= 16))
            ayx32.write_addr((SNDAYX32::REG)val);
          else
@@ -840,7 +842,10 @@ set1FFD:
              n_ay = comp.active_ay;
          }
 
-         if ((conf.sound.ay_scheme == AY_SCHEME_AYX32) && (ay_last_reg >= 16))
+         if (tc_on) tc_write(1, val);   // ZX Trinity card: every #BFFD write
+         if (tc_on && n_ay == 1)
+           ;                            //   chip #FF is the card's: ay[1] plays its registers (tc_frame)
+         else if ((conf.sound.ay_scheme == AY_SCHEME_AYX32) && (ay_last_reg >= 16))
            ayx32.write(temp.sndblock ? 0 : cpu.t, val);
          else
            ay[n_ay].write(temp.sndblock ? 0 : cpu.t, val);
@@ -1384,7 +1389,9 @@ __inline u8 in1(unsigned port)
       }
 
       u8 rc;
-      if ((conf.sound.ay_scheme == AY_SCHEME_AYX32) && (ay_last_reg >= 16))
+      if (tc_on && n_ay == 1)
+        rc = tc_read();                 // ZX Trinity card: chip #FF is its
+      else if ((conf.sound.ay_scheme == AY_SCHEME_AYX32) && (ay_last_reg >= 16))
         rc = ayx32.read();
       else
         rc = ay[n_ay].read();

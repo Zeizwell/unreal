@@ -140,6 +140,7 @@
     <ClCompile Include="snapshot.cpp" />
     <ClCompile Include="sndbuffer.cpp" />
     <ClCompile Include="sndchip.cpp" />
+    <ClCompile Include="trincard.cpp" />
     <ClCompile Include="sndcounter.cpp" />
     <ClCompile Include="sndrender.cpp" />
     <ClCompile Include="snd_bass.cpp" />

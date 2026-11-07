@@ -237,6 +237,7 @@ struct CONFIG
       VOID_FUNC do_sound;
       u8 enabled, gsreset, dsprimary;
       u8 ay_chip, ay_scheme, ay_stereo, ay_vols, ay_samples;
+      u8 trinity;                        // ZX Trinity: timer effects (protocol - ZX Trinity SDK)
       unsigned ay_stereo_tab[6], ay_voltab[32];
    } sound;
 
@@ -247,6 +248,7 @@ struct CONFIG
       u8 mouse, mouseswap, kjoy, keymatrix, joymouse;
       u8 keybpcmode;
       char mousescale;
+      unsigned mousediv; // linear divider of PC mouse counts (0/1 - off, use mousescale)
       u8 mousewheel; // enum MOUSE_WHEEL_MODE //0.36.6 from 0.35b2
       zxkeymap *active_zxk;
       unsigned JoyId;
@@ -451,7 +453,7 @@ enum AY_SCHEME
 #define FF77_TX         0x06
 #define FF77_TL         0x07
 
-// Биты порта 00 для кворума
+// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 00 пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 static const u8 Q_F_RAM = 0x01;
 static const u8 Q_RAM_8 = 0x08;
 static const u8 Q_B_ROM = 0x20;

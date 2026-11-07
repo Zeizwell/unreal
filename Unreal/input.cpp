@@ -251,6 +251,8 @@ char K_INPUT::readdevices()
    mbuttons = 0xFF;
    msx_prev = msx, msy_prev = msy;
    kbdpc[VK_LMB] = kbdpc[VK_RMB] = kbdpc[VK_MMB] = kbdpc[VK_MWU] = kbdpc[VK_MWD] = 0;
+   static unsigned mouse_call = 0;      // frame number of this input read
+   mouse_call++;
    if ((conf.fullscr || conf.lockmouse) && !nomouse)
    {
       unsigned cl1, cl2;
@@ -271,17 +273,52 @@ char K_INPUT::readdevices()
           md.rgbButtons[0] = md.rgbButtons[1];
           md.rgbButtons[1] = t;
       }
-      msx = md.lX; msy = -md.lY;
-      if (conf.input.mousescale >= 0)
+      // movement comes from the WINDOWS CURSOR, not from DirectInput axes.
+      // On some systems (remote desktop, VM, tablet, some mouse drivers) the mouse
+      // is an "absolute" device: DirectInput lX/lY are a position >= 0 even in
+      // relative mode, never a signed step - the cursor only ran down-right.
+      // As Xpeccy does: every frame take how far the Windows cursor went from the
+      // window centre and put it back. DirectInput stays for buttons and wheel.
+      //  - step is scaled with the remainder kept (no lost fractions)
+      //  - step per frame is at most +-127: programs take the difference of two
+      //    reads of the 8-bit port as a signed byte
+      static unsigned mouse_last_call = (unsigned)-2;
+      static int mouse_fracx, mouse_fracy;
+      // The step is taken from where the cursor REALLY stood after the last
+      // SetCursorPos (mouse_ref), not from the centre we asked for: with Windows
+      // display scaling (125%, 150%) the cursor lands 1 pixel off, and a step
+      // from the centre would drift every frame.
+      static POINT mouse_ref;
+      RECT rc; GetClientRect(wnd, &rc);
+      POINT c = { (rc.left + rc.right) / 2, (rc.top + rc.bottom) / 2 };
+      ClientToScreen(wnd, &c);
+      POINT p; GetCursorPos(&p);
+      int sx = p.x - mouse_ref.x, sy = -(p.y - mouse_ref.y);    // ZX: Y grows up
+      SetCursorPos(c.x, c.y);
+      GetCursorPos(&mouse_ref);                 // where it really is now
+      if (mouse_last_call != mouse_call - 1)
       {
-          msx *= (1 << conf.input.mousescale);
-          msy *= (1 << conf.input.mousescale);
+          // capture (re)started: the cursor was anywhere - just centre it
+          sx = sy = 0;
+          mouse_fracx = mouse_fracy = 0;
       }
+      mouse_last_call = mouse_call;
+
+      int mul = 1, div = 1;                     // scale: MouseDiv or 2^MouseScale
+      if (conf.input.mousediv > 1)
+          div = (int)conf.input.mousediv;
+      else if (conf.input.mousescale >= 0)
+          mul = 1 << conf.input.mousescale;
       else
-      {
-          msx /= (1 << -conf.input.mousescale);
-          msy /= (1 << -conf.input.mousescale);
-      }
+          div = 1 << -conf.input.mousescale;
+
+      mouse_fracx += sx * mul;  sx = mouse_fracx / div;  mouse_fracx -= sx * div;
+      mouse_fracy += sy * mul;  sy = mouse_fracy / div;  mouse_fracy -= sy * div;
+
+      if (sx > 127) sx = 127;  if (sx < -127) sx = -127;
+      if (sy > 127) sy = 127;  if (sy < -127) sy = -127;
+      msx = msx_prev + sx;
+      msy = msy_prev + sy;
 
       if (md.rgbButtons[0])
       {
@@ -323,19 +360,37 @@ char K_INPUT::readdevices()
 //~
    }
 
+   static u8 kbdpc_prev[VK_MAX];
    if (nokb)
+   {
+       // focus came back - keys held when it was lost are released in the
+       // PS/2 log too (before, prev was overwritten by zeros and the release was lost:
+       // Alt after Alt+Tab, Ctrl/Shift after a screenshot hotkey stayed pressed)
+       if (!dbgbreak && input.buffer.Enabled())
+       {
+          for (int i = 0; i < 256; i++)
+          {
+             if ((kbdpc_prev[i] & 0x80) && dik_scan[i])
+             {
+                if (dik_scan[i] & 0x0100) input.buffer.Push(0xE0);
+                input.buffer.Push(0xF0);
+                input.buffer.Push(dik_scan[i] & 0x00FF);
+             }
+          }
+       }
        memset(kbdpc, 0, sizeof(kbdpc));
+       memset(kbdpc_prev, 0, sizeof(kbdpc_prev));
+   }
    else
    {
-      static u8 kbdpc_prev[VK_MAX];
       if (!dbgbreak && buffer.Enabled())
           memcpy(kbdpc_prev, kbdpc, sizeof(kbdpc));
 
 	  ReadKeyboard(kbdpc);
 
-      if (!dbgbreak && input.buffer.Enabled()) // TODO: нажатие и отжатие ESC попадает в буфер
+      if (!dbgbreak && input.buffer.Enabled()) // TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ESC пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
       {
-         for (int i = 0; i < sizeof(kbdpc); i++)
+         for (int i = 0; i < 256; i++)  // dik_scan has 256 keys; kbdpc beyond is mouse (VK_LMB...), not PS/2
          {
             if ((kbdpc[i] & 0x80) != (kbdpc_prev[i] & 0x80) && dik_scan[i])
             {
@@ -379,16 +434,25 @@ u8 K_INPUT::aymouse_rd()
    return 0xC0 | (coord & 0x0F) | (mbuttons << 4);
 }
 
+// position inside the frame = prev + delta * t / frame, signed, 64 bit.
+// The original (t*msx + (frame-t)*msx_prev)/frame was computed in UNSIGNED
+// (cpu.t is unsigned): a negative position (mouse moved left/down from the start)
+// or a big one turned into garbage, and the cursor flew.
+static int mouse_lerp(int cur, int prev)
+{
+   long long t = cpu.t;
+   if (t > (long long)conf.frame) t = conf.frame;
+   return prev + (int)(((long long)(cur - prev) * t) / (long long)conf.frame);
+}
+
 u8 K_INPUT::kempston_mx()
 {
-   int x = (cpu.t*msx + (conf.frame - cpu.t)*msx_prev) / conf.frame;
-   return (u8)x;
+   return (u8)mouse_lerp(msx, msx_prev);
 }
 
 u8 K_INPUT::kempston_my()
 {
-   int y = (cpu.t*msy + (conf.frame - cpu.t)*msy_prev) / conf.frame;
-   return (u8)y;
+   return (u8)mouse_lerp(msy, msy_prev);
 }
 
 u8 K_INPUT::read(u8 scan)

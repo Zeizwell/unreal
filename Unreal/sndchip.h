@@ -78,6 +78,10 @@ class SNDCHIP : public SNDRENDER
    u8 get_r13_reloaded() { return r13_reloaded; }
    u8 get_reg(unsigned nreg) { return reg[nreg]; }
    unsigned get_env() { return env; }
+   // AY frame log (savesnd type 3, *.f2l): ZX Trinity timer state per channel - FX row 14, sweep phase 2,
+   // timer periods 3 x 2 (Mix, FM, Env FM) - for comparing with Bitphase exports
+   enum { TRIN_LOG = 3 * (14 + 2 + 6) };
+   void trin_log(u8 *p);
 
  private:
 
@@ -103,6 +107,40 @@ class SNDCHIP : public SNDRENDER
    u64 passed_chip_ticks, passed_clk_ticks;
    void flush(unsigned chiptick);
    void apply_regs(unsigned timestamp = 0);
+
+   // ZX Trinity: timer effects card (protocol - ZX Trinity SDK). Per chip: #C0 control
+   // (key "TRIN" opens, 0 closes, any write resyncs the stream; read 'T'), #C1 packet stream
+   // (ROW / TABLE / RESET / INFO). Enabled by conf.sound.trinity
+   enum { TRIN_ROW = 14, TRIN_TABS = 256, TRIN_STEPS = 16, TRIN_PKT = 19 };
+   struct TRIN_FX {              // one timer: Mix (SID / Sync), FM, Env FM
+      unsigned cnt, dur;         // chip ticks into current step, step length
+      u8 step;                   // step in table
+   };
+   struct TRIN_CH {
+      u8 reg[TRIN_ROW];          // FX row: FLAGS, PWM, SWEEP, 3 x (SEMI, RAW, TAB), LEN1, LEN2
+      TRIN_FX fx[3];
+      unsigned sweep;            // PWM sweep phase 0..65535
+      u8 shape, start, keep;     // sweep shape (table number), start phase, keep on RESET
+      u8 lvl;                    // SID level 0..15
+   };
+   u8 trin_on, trin_key;
+   u8 trin_pkt[TRIN_PKT], trin_pos, trin_need;   // stream parser
+   u8 trin_info;                 // INFO answer: next byte to read from #C1
+   double trin_sweep_pos(const TRIN_CH &ch);
+   TRIN_CH trin[3];
+   u8 trin_tab[TRIN_TABS][TRIN_STEPS];   // tables 0..255, 16 values (length - in the row)
+   bool trin_write(unsigned timestamp, u8 val);
+   bool trin_read(u8 &val);
+   void trin_reset();
+   void trin_packet();
+   void trin_row(int c, const u8 *row, u8 shape, u8 start, u8 keep);
+   void trin_tick();
+   void trin_frame();
+   void trin_next(int c, int k);
+   void trin_apply(int c, int k);
+   unsigned trin_tone(int c);
+   unsigned trin_period(int c, int k);
+   u8 trin_len(int c, int k);
 };
 
 struct AYOUT

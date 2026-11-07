@@ -298,6 +298,7 @@
 #define IDE_VALUE                               1262
 #define IDC_HEX                                 1263
 #define IDC_STATUS                              1264
+#define IDC_CHIP_TRINITY                        1265
 #define IDC_PC_LAYOUT                           10050
 #define IDC_WHEEL_NONE                          10252
 #define IDC_WHEEL_KEYBOARD                      10254

@@ -1,0 +1,7 @@
+# build outputs
+/Unreal/bin/
+/Unreal/tmp/
+/.vs/
+*.user
+# ZX Trinity card: binary from the releases, not in the sources
+trinity_card.*

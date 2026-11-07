@@ -600,6 +600,7 @@ void load_config(const char *fname)
    else if (!strnicmp(line, "AY", 2)) conf.sound.ay_chip = SNDCHIP::CHIP_AY;
 
    conf.sound.ay_samples = GetPrivateProfileInt(ay, "UseSamples", 0, ininame);
+   conf.sound.trinity = GetPrivateProfileInt(ay, "AYFX", 0, ininame);   // AY FX: timer effects card (ZX Trinity registers)
 
    GetPrivateProfileString(ay, "Scheme", nil, line, sizeof line, ininame);
    conf.sound.ay_scheme = AY_SCHEME_NONE;
@@ -637,6 +638,7 @@ void load_config(const char *fname)
 //~
    conf.input.joymouse = GetPrivateProfileInt(input, "JoyMouse", 0, ininame);
    conf.input.mousescale = GetPrivateProfileInt(input, "MouseScale", 0, ininame);
+   conf.input.mousediv = GetPrivateProfileInt(input, "MouseDiv", 0, ininame);
    conf.input.mouseswap = GetPrivateProfileInt(input, "SwapMouse", 0, ininame);
    conf.input.kjoy = GetPrivateProfileInt(input, "KJoystick", 1, ininame);
    conf.input.keymatrix = GetPrivateProfileInt(input, "Matrix", 1, ininame);

@@ -561,6 +561,7 @@ u8 TSdCard::Rd()
         case ST_WR_DATA_RESP:
         {
             CurrState = ST_IDLE;
+            NextState = ST_IDLE;    // иначе Wr(#FF) в ST_IDLE возвращает ST_WR_DATA_RESP - ответ #05 вечно, запись висит
             u8 Resp = ((STAT_DATA_ACCEPTED) << 1) | 1;
             return Resp;
         }

@@ -326,11 +326,15 @@ static void draw_tstx(int n)
 	u32 vptr = vid.vptr;						// address in videobuffer
 	u16 vcyc = vid.memvidcyc[vid.line];
 	u8 line = vid.ygctr & 7;					// symbol line (0-7)
+	// X offset in text mode, as in the FPGA (video_mode.v): cstart = gx_offs >> 2,
+	// cnt_col counts 2 per symbol, so the line starts from symbol gx_offs >> 3
+	u32 xo = (comp.ts.g_xoffs >> 3) & 0x7F;
 
 	for (; n > 0; n -= 2, vid.t_next += 2)
 	{
-		u8 sym = scr[s + vid.xctr];				// symbol code
-		u8 atr = scr[s + vid.xctr + 0x80];		// symbol attribute
+		u32 x = (vid.xctr + xo) & 0x7F;			// symbol column with X offset
+		u8 sym = scr[s + x];					// symbol code
+		u8 atr = scr[s + x + 0x80];				// symbol attribute
 		u8 p = fnt[line + (sym << 3)];			// pixels
 		u32 p0 = vid.clut[(comp.ts.gpal << 4) | ((atr >> 4) & 0x0F)];	// true color for bit=0 (PAPER)
 		u32 p1 = vid.clut[(comp.ts.gpal << 4) | (atr & 0x0F)];			// true color for bit=1 (INK)

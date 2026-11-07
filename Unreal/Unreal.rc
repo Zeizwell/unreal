@@ -220,6 +220,7 @@ FONT 8, "MS Sans Serif", 0, 0, 1
     LTEXT           "&Bus Reaction", IDC_STATIC, 7, 68, 57, 8, SS_LEFT
     COMBOBOX        IDC_CHIP_BUS, 88, 67, 100, 100, WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST
     AUTOCHECKBOX    "Use &Digital Samples", IDC_CHIP_DIGITAL, 7, 83, 79, 10
+    AUTOCHECKBOX    "AY &FX (timer effects)", IDC_CHIP_TRINITY, 7, 97, 120, 10
 }
 
 
