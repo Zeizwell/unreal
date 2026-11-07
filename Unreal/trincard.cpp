@@ -81,12 +81,13 @@ unsigned char tc_read()
    return f_read();
 }
 
-// End of frame: the card up to now; its φM changed (ATARI - 2 MHz) - ay[1] on that clock
+// End of frame: the card up to now; its φM changed (ATARI - 4 MHz) - ay[1] on that clock.
+// The card chip is YM2203: its SSG runs at φM / 2 (ATARI: 2 MHz, as the Atari YM)
 void tc_frame()
 {
    tc_catch_up();
    static unsigned fq_last;
-   unsigned fq = f_phim ? f_phim() : 0;
+   unsigned fq = f_phim ? f_phim() / 2 : 0;
    if (!fq) fq = conf.sound.ayfq;
    if (fq == fq_last) return;
    fq_last = fq;
